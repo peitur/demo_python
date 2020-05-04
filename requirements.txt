@@ -1,3 +1,9 @@
+# https://dpkt.readthedocs.io/en/latest/
 dpkt
-pygame
+pcapy
 scapy
+scapy-http
+# http://www.paramiko.org/
+paramiko
+numpy
+Flask
