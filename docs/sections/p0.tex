@@ -1,1 +1,40 @@
 \section{The absolut basics}
+
+\subsection{Background}
+
+\subsection{Enter Python}
+
+Python code is executed by the python enterpreter. 
+\begin{verbatim}
+python app1.py
+\end{verbatim}
+This tells the python enterpreter program to run the code in app1.py.
+A different way to let the code "run itself" is by using the following as first line
+\begin{verbatim}
+#!/usr/bin/env python
+...code...
+\end{verbatim}
+Then make the script runnable with the chmod command
+\begin{verbatim}
+chmod +x app1.py
+\end{verbatim}
+Now you can run the script as an application. \it{./app1.py}.
+
+\subsection{First program}
+
+Lets write a simple python program that prints "Hello World".
+Use an editor (as per instruction) to create a file in  a work directory and put the following content into it. 
+Not that that whitespaces are important in python.
+
+Create the file app1.py and pu the following content into it.
+\begin{verbatim}
+#!/usr/bin/env python
+
+if __name__ == "__main__":
+    print("Hello World")
+
+\end{verbatim}
+Run program the program with \it{python app1.py}.
+
+Several things are going on here
+
