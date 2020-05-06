@@ -1,12 +1,15 @@
 
 all : main
 
-git: clean
-	pdflatex git.tex
 
 python: clean
-	pdflatex doc.tex
+	latex doc.tex
+	pdflatex -halt-on-error doc.tex
+
 
 clean:
 	rm -f *.aux *.dvi *.log *.toc
+
+clear: clean
+	rm -f *.pdf
 
