@@ -1,7 +1,10 @@
 
 all : main
 
-pdf:
+git: clean
+	pdflatex git.tex
+
+python: clean
 	pdflatex doc.tex
 
 clean:
