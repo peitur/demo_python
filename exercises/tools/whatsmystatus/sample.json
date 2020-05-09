@@ -1,0 +1,8 @@
+{
+    "sources":[
+        "sample.conf"
+    ],
+    "tests":[
+        {"name":"ping localhost", "type":"ping", "test":{ "host":"127.0.0.1", "pings":1 }, "debug":"False" }
+    ]
+}
