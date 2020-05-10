@@ -207,6 +207,7 @@ class User( object ):
                 self._data[ parts[0] ]['gid'] = parts[3]
 
     def lookup( self, uid ):
+        if len( self._data ) == 0: self._load()
         for x in self._data:
             u = self._data[x]
             if u['uid'] == str( uid ):
@@ -214,13 +215,13 @@ class User( object ):
         return None
 
     def exists( self ):
-        if self._user not in self._data: self._load()
+        if len( self._data ) == 0: self._load()
         if self._user in self._data:
             return True
         return False
     
     def info( self ):
-        if self._user not in self._data: self._load()
+        if len( self._data ) == 0: self._load()
         if self._user not in self._data: dict()
         return self._data[ self._user ].copy()
 
@@ -243,6 +244,7 @@ class Group( object ):
                 self._data[ parts[0] ]['users'] = re.split( ",", parts[3] )
 
     def lookup( self, gid ):
+        if len( self._data ) == 0: self._load()
         for x in self._data:
             u = self._data[x]
             if u['gid'] == str( gid ):
@@ -250,13 +252,13 @@ class Group( object ):
         return None
 
     def exists( self ):
-        if self._group not in self._data: self._load()
+        if len( self._data ) == 0: self._load()
         if self._group in self._data:
             return True
         return False
     
     def info( self ):
-        if self._group not in self._data: self._load()
+        if len( self._data ) == 0: self._load()
         if self._group not in self._data: dict()
         return self._data[ self._group ].copy()
 
@@ -271,10 +273,11 @@ def file_info( path ):
     info['name'] = path
     info['size'] = os.stat( path ).st_size
     info['uid'] = os.stat( path ).st_uid
-    info['owner'] = User().lookup( info['uid'] )
+    info['owner'] = User().lookup( info['uid'] )['name']
     info['gid'] = os.stat( path ).st_gid
-    info['group'] = Group().lookup( info['gid' ])
+    info['group'] = Group().lookup( info['gid' ])['name']
     info['mode'] = re.split( "o", oct(stat.S_IMODE( os.stat( path ).st_mode)) )[-1]
+
     return info
 
 
@@ -399,9 +402,9 @@ def test_file( conf, test, **opt ):
 
     if test['state'] in ( "exists", "present" ): w_exists = True
     if test['state'] in ( "missing", "absent" ): w_exists = False
-    if "mode" in test: w_mode = test['mode']
-    if "owner" in test: w_mode = test['owner']
-    if "group" in test: w_mode = test['group']
+    if "mode" in test: w_mode =  apply_value( conf, test['mode'] )
+    if "owner" in test: w_mode = apply_value( conf, test['owner'] )
+    if "group" in test: w_mode = apply_value( conf, test['group'] )
 
     if os.path.exists( path ):
         info = file_info( path )        
