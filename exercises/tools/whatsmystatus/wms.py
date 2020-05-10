@@ -202,9 +202,11 @@ class User( object ):
                 if len( parts ) == 1: continue
                 if parts[0] not in self._data:
                     self._data[ parts[0] ] = dict()
+                g = Group().lookup( parts[3] )
                 self._data[ parts[0] ]['name'] = parts[0]
                 self._data[ parts[0] ]['uid'] = parts[2]
                 self._data[ parts[0] ]['gid'] = parts[3]
+                self._data[ parts[0] ]['group'] = g
 
     def lookup( self, uid ):
         if len( self._data ) == 0: self._load()
@@ -374,10 +376,11 @@ def test_ping( conf, test, **opt ):
         pprint( c.output() )
         print( "="*64 )
 
+
     if c.exitval() != 0:
         return False
     return True
-
+    
 def test_disk( conf, test, **opt ):
     pass
 
@@ -385,7 +388,50 @@ def test_memory( conf, test, **opt ):
     pass
 
 def test_user( conf, test, **opt ):
-    pass
+    results = list()
+    debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
+    w_uid = None
+    w_exists = True
+    w_group = None
+    if 'name' not in test: raise AttributeError("Missing username")
+    if 'state' in test and test['state'] in ( "exists", "present" ): w_exists = True
+    if 'state' in test and test['state'] in ( "missing", "absent" ): w_exists = False
+    if 'uid' in test: w_uid = int( test['uid'] )
+    if 'group' in test: w_group = test['group']
+
+    u = User( test['name'] )
+    d = u.info()
+    if w_uid and w_uid != d['uid']: results.append( False )
+    if w_group and w_group != d['group']['name']: results.append( False )
+    if w_exists and not u.exists(): results.append( False )
+
+    if False in results:
+        return False
+    return True
+
+
+def test_group( conf, test, **opt ):
+    results = list()
+    debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
+    w_gid = None
+    w_exists = True
+    w_gid = None
+    w_user = None
+    if 'name' not in test: raise AttributeError("Missing username")
+    if 'state' in test and test['state'] in ( "exists", "present" ): w_exists = True
+    if 'state' in test and test['state'] in ( "missing", "absent" ): w_exists = False
+    if 'gid' in test: w_gid = test['gid']
+
+    u = Group( test['name'] )
+    d = u.info()
+    if w_exists and not u.exists(): results.append( False )
+    if w_gid and w_gid != d['gid']: results.append( False )
+    if w_user and w_user not in d['users']: results.append( False )
+
+    if False in results:
+        return False
+    return True
+
 
 def test_file( conf, test, **opt ):
     debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
@@ -403,18 +449,20 @@ def test_file( conf, test, **opt ):
     if test['state'] in ( "exists", "present" ): w_exists = True
     if test['state'] in ( "missing", "absent" ): w_exists = False
     if "mode" in test: w_mode =  apply_value( conf, test['mode'] )
-    if "owner" in test: w_mode = apply_value( conf, test['owner'] )
-    if "group" in test: w_mode = apply_value( conf, test['group'] )
+    if "owner" in test: w_owner = apply_value( conf, test['owner'] )
+    if "group" in test: w_group = apply_value( conf, test['group'] )
 
     if os.path.exists( path ):
         info = file_info( path )        
 
         if w_mode and w_mode != info['mode']: results.append( False )
-        if not w_exists: results.append( False )
+        if w_owner and w_owner != info['owner']: results.append( False )
+        if w_group and w_group != info['group']: results.append( False )
 
+        if not w_exists: results.append( False )
+        
     else:
         if w_exists: results.append( False )
-
 
     if False in results:
         return False        
@@ -430,7 +478,10 @@ def test_exec( conf, test, **opt ):
     elif test['type'] in ( "service" ): return test_service( conf, test['test'], **opt )
     elif test['type'] in ( "disk" ): return test_disk( conf, test['test'], **opt )
     elif test['type'] in ( "file" ): return test_file( conf , test['test'], **opt )
-
+    elif test['type'] in ( "user" ): return test_user( conf , test['test'], **opt )
+    elif test['type'] in ( "group" ): return test_group( conf , test['test'], **opt )
+    else:
+        AttributeError("Unknown test type %s" % ( test['type']) )
 
 
 def run_tests( conf, testlist, **opt ):

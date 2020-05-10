@@ -3,7 +3,9 @@
         "sample.conf"
     ],
     "tests":[
-        {"name":"ping localhost", "type":"ping", "test":{ "host":"127.0.0.1", "pings":1, "timeout": 1 }, "debug":"False" },
-        {"name":"ping host", "type":"ping", "test":{ "host":"{{ host }}", "pings":1 }, "debug":"False" }
+        {"name":"ping host", "type":"ping", "test":{ "host":"{{ host }}", "pings":1 }, "debug":"False" },
+        {"name":"passwd file perm", "type":"file", "test":{ "path":"/etc/passwd", "state":"present", "mode":"644", "owner":"root" }, "debug": "True" },
+        {"name":"check user", "type":"user", "test":{ "name":"root", "uid":0, "group":"wheel" }, "debug":"False" },
+        {"name":"check group", "type":"group", "test":{ "name":"whexel", "gid":0 }, "debug":"False" }
     ]
 }
