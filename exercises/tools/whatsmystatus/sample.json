@@ -3,7 +3,7 @@
         "sample.conf"
     ],
     "tests":[
-        {"name":"ping localhost", "type":"ping", "test":{ "host":"127.0.0.1", "pings":1 }, "debug":"False" },
+        {"name":"ping localhost", "type":"ping", "test":{ "host":"127.0.0.1", "pings":1, "timeout": 1 }, "debug":"False" },
         {"name":"ping host", "type":"ping", "test":{ "host":"{{ host }}", "pings":1 }, "debug":"False" }
     ]
 }

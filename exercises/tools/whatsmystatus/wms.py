@@ -75,6 +75,8 @@ class Command( object ):
                 break
 
         self._exitval = prc.returncode
+        if self._exitval != 0:
+            self._failed = True
         return self._output
 
     def run_i( self ):
@@ -92,6 +94,7 @@ class Command( object ):
             yield line.rstrip()
             if prc.poll():
                 break
+        self._exitval = prc.returncode
 
 
     def exitval( self ):
@@ -288,7 +291,21 @@ def test_service( conf, test, **opt ):
     pass
 
 def test_ping( conf, test, **opt ):
-    pass
+
+    if 'host' not in test: raise AttributeError("Missing host")
+    pings = int( test.get( 'pings', 1 ))
+    timeout = ""
+    if 'timeout' in test:
+        timeout = "-t %s" % ( test['timeout'] )
+
+    command = "ping %s -c %s %s" % ( timeout, pings, apply_value( conf, test['host'] ) )
+
+    c = Command( command, **opt )
+    c.run_r()
+
+    if c.exitval() != 0:
+        return False
+    return True
 
 def test_disk( conf, test, **opt ):
     pass
@@ -306,6 +323,13 @@ def test_url( conf, test, **opt ):
     pass
 
 
+def test_exec( conf, test, **opt ):
+    if test['type'] in ( "ping" ): return test_ping( conf, test['test'], **opt )
+    elif test['type'] in ( "service" ): return test_service( conf, test['test'], **opt )
+    elif test['type'] in ( "disk" ): return test_disk( conf, test['test'], **opt )
+    elif test['type'] in ( "service" ): return test_service( test['test'], test, **opt )
+
+
 def run_tests( conf, testlist, **opt ):
     overall_res = True
     for test in testlist:
@@ -313,12 +337,11 @@ def run_tests( conf, testlist, **opt ):
         if 'type' not in test: raise AttributeError("Missing test type")
         if 'test' not in test: raise AttributeError("Missing test config")
 
-        print("[+] Running test '%s' [%s] ... %-64s" % ( test['name'], test['type'], "" ) )
-        if test['type'] in ( "ping" ): test_ping( conf, test, **opt )
-        elif test['type'] in ( "service" ): test_service( conf, test, **opt )
-        elif test['type'] in ( "disk" ): test_disk( conf, test, **opt )
-        elif test['type'] in ( "service" ): test_service( conf, test, **opt )
-
+        print("[+] Running test '%s' [%s] ... %64s" % ( test['name'], test['type'], "" ), end="" )
+        if test_exec( conf, test, **opt ):
+            print("OK")
+        else:
+            print("Fail")
 
     return overall_res
 
@@ -356,10 +379,6 @@ if __name__ == "__main__":
             s = FileSource( x )
             for u in s.data():
                 opts['vars'][u] = apply_value( opts['vars'], s.get( u ) )
-
-    pprint( User( "root" ).info() )
-    pprint( Group( "wheel" ).info() )
-
 
     if run_tests(  opts['vars'] , config.get('tests'), **opts ):
         print("All is well")
