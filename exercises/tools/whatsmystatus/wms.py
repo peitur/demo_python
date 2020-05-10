@@ -104,10 +104,32 @@ class Command( object ):
 class DiskInfo( object ):
 
     def __init__( self, path, **opt ):
-        pass
+        self._debug = boolify( opt.get( "debug", False ) )
+        self._path = path
+        self._data = dict()
+        self._info = dict()
+
+    def _load( self ):
+        stat = os.statvfs( self._path )
+
+        self._data['bsize'] = stat.f_bsize
+        self._data['frsize'] = stat.f_frsize
+        self._data['blocks'] = stat.f_blocks
+        self._data['bfree'] = stat.f_bfree
+        self._data['bavail'] = stat.f_bavail
+        self._info['total'] = int( self._data['frsize'] * self._data['blocks'] )
+        self._info['free'] = int( self._data['frsize'] * self._data['bfree'] )
+        self._info['used'] = self._info['total'] - self._info['free']
+
+    def raw( self ):
+        if len( self._data ) == 0:
+            self._load()
+        return self._data.copy()
 
     def info( self ):
-        pass
+        if len( self._data ) == 0:
+            self._load()
+        return self._info.copy()
 
 class Configuration( object ):
     def __init__( self, filename, **opt ):
@@ -148,25 +170,73 @@ class User( object ):
     def __init__( self, user, **opt ):
         self._debug = boolify( opt.get( "debug", False ) )
         self._filename = "/etc/passwd"
+        self._user = user
         self._data = dict()
 
-    def eists( self ):
-        pass
+    def _load( self ):
+        with open( self._filename ) as fd:
+            for line in fd.readlines():
+                parts = re.split( ":", line.lstrip().rstrip() )
+                if len( parts ) == 1: continue
+                if parts[0] not in self._data:
+                    self._data[ parts[0] ] = dict()
+                self._data[ parts[0] ]['name'] = parts[0]
+                self._data[ parts[0] ]['uid'] = parts[2]
+                self._data[ parts[0] ]['gid'] = parts[3]
+
+    def lookup( self, uid ):
+        for x in self._data:
+            u = self._data[x]
+            if u['uid'] == uid:
+                return u.copy()
+        return dict()
+
+    def exists( self ):
+        if self._user not in self._data: self._load()
+        if self._user in self._data:
+            return True
+        return False
     
     def info( self ):
-        pass
+        if self._user not in self._data: self._load()
+        if self._user not in self._data: dict()
+        return self._data[ self._user ].copy()
 
 class Group( object ):
     def __init__( self, group, **opt ):
         self._debug = boolify( opt.get( "debug", False ) )
-        self._filename = "/etc/groups"
+        self._group = group
+        self._filename = "/etc/group"
         self._data = dict()
 
-    def eists( self ):
-        pass
+    def _load( self ):
+        with open( self._filename ) as fd:
+            for line in fd.readlines():
+                parts = re.split( ":", line.lstrip().rstrip() )
+                if len( parts ) == 1: continue
+                if parts[0] not in self._data:
+                    self._data[ parts[0] ] = dict()
+                self._data[ parts[0] ]['name'] = parts[0]
+                self._data[ parts[0] ]['gid'] = parts[2]
+                self._data[ parts[0] ]['users'] = re.split( ",", parts[3] )
+
+    def lookup( self, gid ):
+        for x in self._data:
+            u = self._data[x]
+            if u['gid'] == gid:
+                return u.copy()
+        return dict()
+
+    def exists( self ):
+        if self._group not in self._data: self._load()
+        if self._group in self._data:
+            return True
+        return False
     
     def info( self ):
-        pass
+        if self._group not in self._data: self._load()
+        if self._group not in self._data: dict()
+        return self._data[ self._group ].copy()
 
 ##############################################################################
 ###### Util functions
@@ -287,6 +357,8 @@ if __name__ == "__main__":
             for u in s.data():
                 opts['vars'][u] = apply_value( opts['vars'], s.get( u ) )
 
+    pprint( User( "root" ).info() )
+    pprint( Group( "wheel" ).info() )
 
 
     if run_tests(  opts['vars'] , config.get('tests'), **opts ):
