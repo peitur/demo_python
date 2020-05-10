@@ -25,6 +25,27 @@ class FileSource( object ):
 
             self._data[ k ] = v
 
+    def get( self, key ):
+        if len( self._data ) == 0:
+            self._load()
+        if key not in self._data:
+            raise RuntimeError( "No such config key item %s" % ( key ) )
+        return self._data[ key ]
+
+
+    def set( self, key, val, overwrite=False ):
+        if len( self._data ) == 0:
+            self._load()
+        if key in self._data and not overwrite:
+            raise RuntimeError( "Key %s already exists in config, no overwrite enabled" % ( key ) )
+        self._data[ key ] = val
+
+    def defined( self, key ):
+        if key not in self._data:
+            return False
+        return True
+
+
     def data( self ):
         if len( self._data ) == 0:
             self._load()
@@ -80,10 +101,6 @@ class Command( object ):
         return self._output
 
 
-class Environment( object ):
-    def __init__(self):
-        pass
-
 class DiskInfo( object ):
 
     def __init__( self, path, **opt ):
@@ -129,7 +146,9 @@ class Configuration( object ):
 
 class User( object ):
     def __init__( self, user, **opt ):
-        pass
+        self._debug = boolify( opt.get( "debug", False ) )
+        self._filename = "/etc/passwd"
+        self._data = dict()
 
     def eists( self ):
         pass
@@ -139,7 +158,9 @@ class User( object ):
 
 class Group( object ):
     def __init__( self, group, **opt ):
-        pass
+        self._debug = boolify( opt.get( "debug", False ) )
+        self._filename = "/etc/groups"
+        self._data = dict()
 
     def eists( self ):
         pass
@@ -159,10 +180,10 @@ def is_instamce_of( obj, ref ):
 def size_to_bytes( size ):
     pass
 
-def apply_value(  lookup, key, string ):
-    if key not in lookup:
-        raise AttributeError("Undefined key %s in lookup source" % ( key ) )
-    return re.sub( "{{\s*\S+\s*}}", lookup[key], string )
+def apply_value(  lookup, string ):
+    for key in lookup:
+        string = re.sub( "{{\s*%s+\s*}}" % ( key ), lookup[ key ], string )
+    return string
 
 def dirlist( path, rx=r".*" ):
     return [ x for x in os.listdir( path ) if x not in (".", "..") and re.match( rx, x ) ]
@@ -226,22 +247,31 @@ def run_tests( conf, testlist, **opt ):
         if test['type'] in ( "ping" ): test_ping( conf, test, **opt )
         elif test['type'] in ( "service" ): test_service( conf, test, **opt )
         elif test['type'] in ( "disk" ): test_disk( conf, test, **opt )
+        elif test['type'] in ( "service" ): test_service( conf, test, **opt )
 
 
     return overall_res
 
+
+def print_help( s ):
+    print("%s <config.json>" % ( s ) )
 
 def print_test( name, result, update = False ):
     pass
 
 if __name__ == "__main__":
     opts = dict()
-    opts['script'] = sys.argv.pop(0)
+    opts['script'] = os.path.basename( sys.argv.pop(0) )
     opts['debug'] = False
     opts['lookup'] = dict()
-    opts['cfile'] = sys.argv.pop(0)
-    
-    external = dict()
+    opts['vars'] = dict()
+
+    try:
+        opts['cfile'] = sys.argv.pop(0)
+    except Exception as e:
+        print_help( opts[ 'script'] )
+        sys.exit(0)
+
     config = Configuration( opts['cfile'], **opts )
     
     if 'debug' in config.all():
@@ -251,16 +281,15 @@ if __name__ == "__main__":
         pprint( config.all() )
 
     if config.defined( 'sources' ):
-        for s in config.get( 'sources' ):
-            print("[ ] Loading source file '%s'" % ( s ) )
-            s = FileSource( s )
-            external = dmerge( external, s.data() )
+        for x in config.get( 'sources' ):
+            print("[ ] Loading source file '%s'" % ( x ) )
+            s = FileSource( x )
+            for u in s.data():
+                opts['vars'][u] = apply_value( opts['vars'], s.get( u ) )
 
-    for u in external:
-        external[ u ] = apply_value( external, u, external[ u ] ) 
-    pprint( external )
 
-    if run_tests( external, config.get('tests'), **opts ):
+
+    if run_tests(  opts['vars'] , config.get('tests'), **opts ):
         print("All is well")
     else:
         print("Some errors occured")
