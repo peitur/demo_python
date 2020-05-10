@@ -6,6 +6,25 @@ import datetime
 import shlex, subprocess
 
 from pprint import pprint
+ 
+FMT = {
+    "header": '\033[95m',
+    "info": '\033[94m',
+    "ok": '\033[92m',
+    "warning": '\033[93m',
+    "fail": '\033[91m',
+    "nc": '\x1b[0m'
+}
+
+FMT_HEADER=FMT['header']
+FMT_INFO=FMT['info']
+FMT_SUCCESS=FMT['ok']
+FMT_FAILURE=FMT['fail']
+FMT_WARNING=FMT['warning']
+FMT_NC=FMT['nc']
+
+
+
 
 class FileSource( object ):
 
@@ -292,6 +311,8 @@ def test_service( conf, test, **opt ):
 
 def test_ping( conf, test, **opt ):
 
+    debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
+
     if 'host' not in test: raise AttributeError("Missing host")
     pings = int( test.get( 'pings', 1 ))
     timeout = ""
@@ -299,9 +320,15 @@ def test_ping( conf, test, **opt ):
         timeout = "-t %s" % ( test['timeout'] )
 
     command = "ping %s -c %s %s" % ( timeout, pings, apply_value( conf, test['host'] ) )
-
-    c = Command( command, **opt )
+    if debug:
+        print("DEBUG: Command: %s" % ( command ) )
+    c = Command( command, debug=debug )
     c.run_r()
+
+    if debug:
+        print( "="*64 )
+        pprint( c.output() )
+        print( "="*64 )
 
     if c.exitval() != 0:
         return False
@@ -337,11 +364,12 @@ def run_tests( conf, testlist, **opt ):
         if 'type' not in test: raise AttributeError("Missing test type")
         if 'test' not in test: raise AttributeError("Missing test config")
 
-        print("[+] Running test '%s' [%s] ... %64s" % ( test['name'], test['type'], "" ), end="" )
+        print("[+] %sRunning test%s '%s' [%s] ... " % (  FMT_INFO, FMT_NC ,test['name'], test['type']  ), end="" )
         if test_exec( conf, test, **opt ):
-            print("OK")
+            print("%sOK%s" % ( FMT_SUCCESS, FMT_NC ) )
         else:
-            print("Fail")
+            print("%sFail%s" % ( FMT_FAILURE, FMT_NC ) )
+            overall_res = False
 
     return overall_res
 
@@ -375,13 +403,13 @@ if __name__ == "__main__":
 
     if config.defined( 'sources' ):
         for x in config.get( 'sources' ):
-            print("[ ] Loading source file '%s'" % ( x ) )
+            print("[+] %sLoading source file%s '%s'" % ( FMT_HEADER, FMT_NC, x ) )
             s = FileSource( x )
             for u in s.data():
                 opts['vars'][u] = apply_value( opts['vars'], s.get( u ) )
 
     if run_tests(  opts['vars'] , config.get('tests'), **opts ):
-        print("All is well")
+        print("[ ] %sAll is well%s" % (FMT_SUCCESS, FMT_NC ) )
     else:
-        print("Some errors occured")
+        print("[!] %sSome errors occured%s" % ( FMT_FAILURE, FMT_NC ) )
     
