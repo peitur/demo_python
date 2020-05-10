@@ -189,7 +189,7 @@ class Configuration( object ):
 
 
 class User( object ):
-    def __init__( self, user, **opt ):
+    def __init__( self, user=None, **opt ):
         self._debug = boolify( opt.get( "debug", False ) )
         self._filename = "/etc/passwd"
         self._user = user
@@ -209,9 +209,9 @@ class User( object ):
     def lookup( self, uid ):
         for x in self._data:
             u = self._data[x]
-            if u['uid'] == uid:
+            if u['uid'] == str( uid ):
                 return u.copy()
-        return dict()
+        return None
 
     def exists( self ):
         if self._user not in self._data: self._load()
@@ -225,7 +225,7 @@ class User( object ):
         return self._data[ self._user ].copy()
 
 class Group( object ):
-    def __init__( self, group, **opt ):
+    def __init__( self, group=None, **opt ):
         self._debug = boolify( opt.get( "debug", False ) )
         self._group = group
         self._filename = "/etc/group"
@@ -245,9 +245,9 @@ class Group( object ):
     def lookup( self, gid ):
         for x in self._data:
             u = self._data[x]
-            if u['gid'] == gid:
+            if u['gid'] == str( gid ):
                 return u.copy()
-        return dict()
+        return None
 
     def exists( self ):
         if self._group not in self._data: self._load()
@@ -264,13 +264,56 @@ class Group( object ):
 ###### Util functions
 ##############################################################################
 
+def file_info( path ):
+    if not os.path.exists( path ):
+        return None
+    info = dict()
+    info['name'] = path
+    info['size'] = os.stat( path ).st_size
+    info['uid'] = os.stat( path ).st_uid
+    info['owner'] = User().lookup( info['uid'] )
+    info['gid'] = os.stat( path ).st_gid
+    info['group'] = Group().lookup( info['gid' ])
+    info['mode'] = re.split( "o", oct(stat.S_IMODE( os.stat( path ).st_mode)) )[-1]
+    return info
+
+
 def is_instamce_of( obj, ref ):
     if type( obj ).__name__ == ref:
         return True
     return False
 
-def size_to_bytes( size ):
-    pass
+def size_htob( s ):
+    rx = re.compile( r"([0-9\.]+)([bkMG]*)[bB]*" )
+    m = rx.match( s )
+    nbytes = None
+
+    if m:
+        amount = m.group(1)
+        unit = m.group(2)
+
+        if unit == "k":
+            nbytes = int( float( amount ) * 1024 )
+        elif unit == "M":
+            nbytes = int( float( amount ) * 1024 * 1024 )
+        elif unit == "G":
+            nbytes = int( float( amount ) * 1024 * 1024 * 1024 )
+        else:
+            if re.match( r"[0-9]+\.[0-9]+", amount ):
+                raise AttributeError("Bad byte format. Got float value!")
+            nbytes = int( amount )
+    return int( nbytes )
+
+
+def size_btoh( s ):
+    units = { "": 1, "k": 1024, "M": 1024 * 1024, "G": 1024 * 1024 * 1024  }
+
+    x = int( s )
+    for i in units:
+        c = float( x / units[i] )
+        if c < 500:
+            return "%s%s" % ( c, i )
+    return x
 
 def apply_value(  lookup, string ):
     for key in lookup:
@@ -310,9 +353,7 @@ def test_service( conf, test, **opt ):
     pass
 
 def test_ping( conf, test, **opt ):
-
     debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
-
     if 'host' not in test: raise AttributeError("Missing host")
     pings = int( test.get( 'pings', 1 ))
     timeout = ""
@@ -344,7 +385,38 @@ def test_user( conf, test, **opt ):
     pass
 
 def test_file( conf, test, **opt ):
-    pass
+    debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
+    if 'path' not in test: raise AttributeError("Missing path")
+    if 'state' not in test: raise AttributeError("Missing state")
+
+    results = list()
+    path = test['path']
+    w_exists = True
+    w_mode = None
+    w_owner = None
+    w_group = None
+
+
+    if test['state'] in ( "exists", "present" ): w_exists = True
+    if test['state'] in ( "missing", "absent" ): w_exists = False
+    if "mode" in test: w_mode = test['mode']
+    if "owner" in test: w_mode = test['owner']
+    if "group" in test: w_mode = test['group']
+
+    if os.path.exists( path ):
+        info = file_info( path )        
+
+        if w_mode and w_mode != info['mode']: results.append( False )
+        if not w_exists: results.append( False )
+
+    else:
+        if w_exists: results.append( False )
+
+
+    if False in results:
+        return False        
+    return True
+
 
 def test_url( conf, test, **opt ):
     pass
@@ -354,7 +426,8 @@ def test_exec( conf, test, **opt ):
     if test['type'] in ( "ping" ): return test_ping( conf, test['test'], **opt )
     elif test['type'] in ( "service" ): return test_service( conf, test['test'], **opt )
     elif test['type'] in ( "disk" ): return test_disk( conf, test['test'], **opt )
-    elif test['type'] in ( "service" ): return test_service( test['test'], test, **opt )
+    elif test['type'] in ( "file" ): return test_file( conf , test['test'], **opt )
+
 
 
 def run_tests( conf, testlist, **opt ):
