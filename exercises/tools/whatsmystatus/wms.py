@@ -224,7 +224,7 @@ class User( object ):
     
     def info( self ):
         if len( self._data ) == 0: self._load()
-        if self._user not in self._data: dict()
+        if self._user and self._user not in self._data: return dict()
         return self._data[ self._user ].copy()
 
 class Group( object ):
@@ -261,7 +261,7 @@ class Group( object ):
     
     def info( self ):
         if len( self._data ) == 0: self._load()
-        if self._group not in self._data: dict()
+        if self._group and self._group not in self._data: return dict()
         return self._data[ self._group ].copy()
 
 ##############################################################################
