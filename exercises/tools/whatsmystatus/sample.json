@@ -6,6 +6,6 @@
         {"name":"ping host", "type":"ping", "test":{ "host":"{{ host }}", "pings":1 }, "debug":"False" },
         {"name":"passwd file perm", "type":"file", "test":{ "path":"/etc/passwd", "state":"present", "mode":"644", "owner":"root" }, "debug": "True" },
         {"name":"check user", "type":"user", "test":{ "name":"root", "uid":0, "group":"wheel" }, "debug":"False" },
-        {"name":"check group", "type":"group", "test":{ "name":"whexel", "gid":0 }, "debug":"False" }
+        {"name":"check group", "type":"group", "test":{ "name":"wheel", "gid":0 }, "debug":"False" }
     ]
 }
