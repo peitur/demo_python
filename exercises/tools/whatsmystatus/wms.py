@@ -267,6 +267,12 @@ class Group( object ):
 ##############################################################################
 ###### Util functions
 ##############################################################################
+def system_type( ):
+    c = Command( "uname -a")
+    c.run()
+    return re.split( "\s+", c.output()[0].rstrip().lstrip() )[0].lower()
+
+
 
 def file_info( path ):
     if not os.path.exists( path ):
@@ -355,7 +361,24 @@ def dmerge( a, b ):
 ##############################################################################
 
 def test_service( conf, test, **opt ):
-    pass
+    results = list()
+    debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
+    w_exists = "active"
+    if 'name' not in test: raise AttributeError("Missing service name")
+    if 'state' in test and test['state'] in ( "exists", "present", "active" ): w_exists = "active"
+    if 'state' in test and test['state'] in ( "missing", "absent", "inactive" ): w_exists = "inactive"
+    if 'state' in test and test['state'] in ( "unknown", "missing" ): w_exists = "unknown"
+        
+    cmd = "systemctl is-active %s" % ( test['name'] )
+    c = Command( cmd )
+    c.run()
+
+    if c.output()[0].rstrip().lstrip() != w_exists:
+        results.append( False )
+
+    if False in results:
+        return False
+    return True
 
 def test_ping( conf, test, **opt ):
     debug = boolify( test.get('debug', opt.get( "debug", False ) ) )
@@ -363,7 +386,12 @@ def test_ping( conf, test, **opt ):
     pings = int( test.get( 'pings', 1 ))
     timeout = ""
     if 'timeout' in test:
-        timeout = "-t %s" % ( test['timeout'] )
+        if system_type() == "darwin":
+            timeout = "-t %s" % ( test['timeout'] )
+        elif system_type() == "linux":
+            timeout = "-W %s" % ( test['timeout'] )
+        else:
+            raise AttributeError("Unsupported platform")
 
     command = "ping %s -c %s %s" % ( timeout, pings, apply_value( conf, test['host'] ) )
     if debug:
