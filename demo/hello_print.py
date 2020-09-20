@@ -4,6 +4,14 @@ import sys
 import time
 from pprint import pprint
 
+FMT = {
+    "nc": '\x1b[0m',
+    "info": '\033[94m',
+    "ok": '\033[92m',
+    "warning": '\033[93m',
+    "fail": '\033[91m',
+}
+
 if __name__ == "__main__":
 
     print("your message")
