@@ -6,17 +6,29 @@ import string
 
 from pprint import pprint
 
-def xorStr( data_str ):
+def hexStr( data_str ):
+    """
+    Lets convert our string to hex based integers
+    """
     return int( binascii.hexlify( data_str.encode() ),  16 )
 
 def enc( msg, k ):
+    """
+    Simple encoding by exoring stuff with a key k
+    """
     return int( binascii.hexlify( msg.encode() ), 16 ) ^ k
 
 def dec( msg, k ):
+    """
+    Lets decode xor with a key k ...
+    """
     b = format( msg ^ k, 'x' )
     return binascii.unhexlify( ( '0' * (len( b ) % 2 )) + b )
 
 def printable( line, plist ):
+    """
+    checking if a  list of bytes are printable as charachters
+    """
     ret = b''
     for s in line:
         if s in (b'\n', b'\r',b'\t',b'\x0b', b'\x0c', b' '):
@@ -29,6 +41,9 @@ def printable( line, plist ):
     return ret
 
 def file_n_bytes( filename, n ):
+    """
+    dump any file as a common hexdumper would do
+    """
     try:
 
         line = b""

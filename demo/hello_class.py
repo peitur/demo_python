@@ -2,8 +2,12 @@
 
 from pprint import pprint
 
-class Test1( object ):
 
+class Test1( object ):
+    """
+    Test class 1, very simple implementation of inparameters and a string overlayering
+    Includes a factory method create that returns a new object
+    """
     def __init__( self, param ):
         self._param = param
         self._type = type( param ).__name__
@@ -21,7 +25,10 @@ class Test1( object ):
         return Test1( param )
 
 class Test2( Test1 ):
-
+    """
+    Create a test class 2, that inherits the behaviour of test1.
+    
+    """
     def __init__( self, param, data ):
         Test1.__init__(self, param )
         self._data = data
