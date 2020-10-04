@@ -37,6 +37,7 @@ make cleanup
 5. hello_loops.py
 6. hello_imports.py
 7. hello_error.py
+8. hello_binary.py
 
 #### Exercises
 
