@@ -18,8 +18,9 @@ def simple_worker( i, t ):
 
 def spawn_simple_workers( n ):
     plist = dict()
+    print("[ ] Starting %d workers ... " % ( n ) )
     for x in range( n ):
-        sleeptime = randint( 100 )
+        sleeptime = randint( 15 )
         plist[x] = multiprocessing.Process( target=simple_worker, args=(x,sleeptime))
 
     for i in plist:
@@ -34,7 +35,11 @@ def spawn_simple_workers( n ):
 if __name__ == "__main__":
 
     opt = dict()
-    plist = spawn_simple_workers(10)
-    for i in plist:
-        p = plist[i]
-        p.join()
+    nprocs = randint( 32 )
+    try:
+        plist = spawn_simple_workers( nprocs )
+        for i in plist:
+            p = plist[i]
+            p.join()
+    except Exception as e:
+        print("Worker crashed ... : %s " % (e) )
