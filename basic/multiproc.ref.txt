@@ -1,0 +1,4 @@
+https://docs.python.org/3/library/multiprocessing.html
+
+https://pymotw.com/2/multiprocessing/communication.html
+
