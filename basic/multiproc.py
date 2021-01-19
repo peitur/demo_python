@@ -72,7 +72,10 @@ class Mapper( multiprocessing.Process ):
         self._run = True
 
     def run( self ):
-        pass
+        proc_name = self.name
+
+        while self._run:
+            pass
 
 
 class Reducer( multiprocessing.Process ):
@@ -84,11 +87,14 @@ class Reducer( multiprocessing.Process ):
         self._run = True
 
     def run( self ):
-        pass
+        proc_name = self.name
+
+        while self._run:
+            pass
 
 class Manager( multiprocessing.Process ):
 
-    def __init__( self, map_in_queue, red_in_queue, result_queue ):
+    def __init__( self, map_in_queue, red_in_queue, map_esult_queue, red_result_queue ):
         multiprocessing.Process.__init__(self)
         self._map_in_queue = map_in_queue
         self._reduce_in_queue = red_in_queue
@@ -96,7 +102,10 @@ class Manager( multiprocessing.Process ):
         self._run = True
 
     def run( self ):
-        pass
+        proc_name = self.name
+        
+        while self._run:
+            pass
     
 
 def mapreducer():
@@ -108,13 +117,14 @@ def mapreducer():
     multiprocessing.set_start_method('fork')
 
     print("[ ] Creating %d map %d reduce processes ..." % ( n_map_procs, n_red_procs ) )
-    map_tasks = multiprocessing.Queue( )
-    red_tasks = multiprocessing.Queue( )
-    map_results = multiprocessing.Queue( )
-    red_results = multiprocessing.Queue( )
+    map_tasks = multiprocessing.JoinableQueue( )
+    red_tasks = multiprocessing.JoinableQueue( )
+    map_results = multiprocessing.JoinableQueue( )
+    red_results = multiprocessing.JoinableQueue( )
 
     print("[ ] Generating  %d samples in interval %s - %s ..." % ( t_size, t_interval[0], t_interval[1] ) )
     generator = Generator( t_size, t_interval[0], t_interval[1], map_tasks )
+    manager = Manager( )
     generator.start()
 
 
