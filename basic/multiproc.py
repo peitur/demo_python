@@ -115,7 +115,7 @@ class Reducer( multiprocessing.Process ):
         res = dict()
         res['even'] = 0
         res['odd'] = 0
-
+        res['sum'] = 0
         while self._run:
             data = self._task_queue.get()
             if data is None:
@@ -126,14 +126,16 @@ class Reducer( multiprocessing.Process ):
 
             if data is not None:
                 if type( data ).__name__ == "int":
+                    res['sum'] += 1
                     if data == 0:
                         res['even'] += 1
                     else:
                         res['odd'] += 1
 
-            self._task_queue.task_done()    
+            self._task_queue.task_done()
 
         self._result_queue.put( res )
+        self._result_queue.put( None )
 
         return
 
@@ -142,8 +144,8 @@ class Reducer( multiprocessing.Process ):
 def mapreducer():
     t_size = 100000
     t_interval = (0, 256)
-    n_map_procs = 5 # andint( 5,1 )
-    n_red_procs = 5 # randint( 5,1 )
+    n_map_procs = 15 # andint( 5,1 )
+    n_red_procs = 15 # randint( 5,1 )
 
     multiprocessing.set_start_method('fork')
 
@@ -168,13 +170,22 @@ def mapreducer():
     generator = Generator( t_size, len(mappers), t_interval[0], t_interval[1], map_tasks )
     generator.start()
 
-    res = None
-    while not res:
+    map_tasks.join()
+    map_results.join()
+    red_results.join()
+    
+    terms = 0
+    tot_sums = 0
+    while terms < len( reducers ):
         res = red_results.get()
-        pprint(res)
+        if res is None:
+            terms += 1
+        else:
+            pprint(res)
+            tot_sums += res['sum']
         red_results.task_done()
-
-
+    pprint( tot_sums )
+    
 
 ## ----------------------------------------------------------
 ## OOP version
