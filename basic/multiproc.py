@@ -46,10 +46,11 @@ from pprint import pprint
 
 class Generator( multiprocessing.Process ):
     
-    def __init__( self, samples, s, e, result_queue, **opts ):
+    def __init__( self, samples, nworkers, s, e, result_queue, **opts ):
         multiprocessing.Process.__init__(self)
         self._debug = opts.get("debug", False)
         self._samples = samples
+        self._num_workers = nworkers
         self._int_start = s
         self._int_end = e
         self._result_queue = result_queue
@@ -59,9 +60,14 @@ class Generator( multiprocessing.Process ):
     def run( self ):
         proc_name = self.name
         print("[+] %s Starting generator execution %s - %s with %s samples" % ( proc_name, self._int_start, self._int_end, self._samples ) )
+        
         for i in range( self._samples ):
             self._result_queue.put( randint( self._int_end ) )
-    
+        
+        for i in range( self._num_workers ):
+            print("Sending term %s" % ( i ) )
+            self._result_queue.put( None )
+
         return
 
 class Mapper( multiprocessing.Process ):
@@ -75,15 +81,15 @@ class Mapper( multiprocessing.Process ):
 
     def run( self ):
         proc_name = self.name
-
         while self._run:
             data = self._task_queue.get()
-            if not data:
+            if data is None:
+                print("### DONE ####")
                 self._run = False
 
             print( "%s: %s" % ( proc_name, data ) )
-            
-            self._task_queue.task_done()            
+            self._task_queue.task_done()    
+
         return
 
 class Reducer( multiprocessing.Process ):
@@ -119,8 +125,8 @@ class Manager( multiprocessing.Process ):
 def mapreducer():
     t_size = 100000
     t_interval = (0, 256)
-    n_map_procs = randint( 5 )
-    n_red_procs = randint( 5 )
+    n_map_procs = 5 # andint( 5,1 )
+    n_red_procs = 5 # randint( 5,1 )
 
     multiprocessing.set_start_method('fork')
 
@@ -130,14 +136,15 @@ def mapreducer():
     map_results = multiprocessing.JoinableQueue( )
     red_results = multiprocessing.JoinableQueue( )
 
-    print("[ ] Generating  %d samples in interval %s - %s ..." % ( t_size, t_interval[0], t_interval[1] ) )
-    generator = Generator( t_size, t_interval[0], t_interval[1], map_tasks )
-    generator.start()
 
-    mappers = [ Mapper( map_tasks, map_results ) for i in range( 1 ) ]
-
+    mappers = [ Mapper( map_tasks, map_results ) for i in range( n_map_procs ) ]
     for m in mappers:
         m.start()
+
+    print("[ ] Generating  %d samples in interval %s - %s ..." % ( t_size, t_interval[0], t_interval[1] ) )
+
+    generator = Generator( t_size, len(mappers), t_interval[0], t_interval[1], map_tasks )
+    generator.start()
 
     map_tasks.join()
 
