@@ -86,9 +86,17 @@ class Mapper( multiprocessing.Process ):
             if data is None:
                 print("### DONE ####")
                 self._run = False
+                self._result_queue.put( None )
 
-            print( "%s: %s" % ( proc_name, data ) )
-            self._task_queue.task_done()    
+#            print("%s > %s" % ( proc_name, data ) )
+
+            if data is not None:
+                if type( data ).__name__ == "int":
+                    if data % 2 == 0:
+                        self._result_queue.put( 0 )
+                    else:
+                        self._result_queue.put( 1 )
+            self._task_queue.task_done()
 
         return
 
@@ -104,23 +112,32 @@ class Reducer( multiprocessing.Process ):
     def run( self ):
         proc_name = self.name
 
+        res = dict()
+        res['even'] = 0
+        res['odd'] = 0
+
         while self._run:
-            pass
+            data = self._task_queue.get()
+            if data is None:
+                print("### DONE ####")
+                self._run = False
 
-class Manager( multiprocessing.Process ):
+#            print("%s > %s" % ( proc_name, data ) )
 
-    def __init__( self, **opts ):
-        multiprocessing.Process.__init__(self)
-        self._debug = opts.get("debug", False)
-        self._options = opts
-        self._run = True
+            if data is not None:
+                if type( data ).__name__ == "int":
+                    if data == 0:
+                        res['even'] += 1
+                    else:
+                        res['odd'] += 1
 
-    def run( self ):
-        proc_name = self.name
-        
-        while self._run:
-            pass
-    
+            self._task_queue.task_done()    
+
+        self._result_queue.put( res )
+
+        return
+
+
 
 def mapreducer():
     t_size = 100000
@@ -141,12 +158,22 @@ def mapreducer():
     for m in mappers:
         m.start()
 
+    reducers = [ Reducer( map_results, red_results ) for i in range( n_red_procs ) ]
+    for r in reducers:
+        r.start()
+
+
     print("[ ] Generating  %d samples in interval %s - %s ..." % ( t_size, t_interval[0], t_interval[1] ) )
 
     generator = Generator( t_size, len(mappers), t_interval[0], t_interval[1], map_tasks )
     generator.start()
 
-    map_tasks.join()
+    res = None
+    while not res:
+        res = red_results.get()
+        pprint(res)
+        red_results.task_done()
+
 
 
 ## ----------------------------------------------------------
