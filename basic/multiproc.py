@@ -65,7 +65,7 @@ class Generator( multiprocessing.Process ):
             self._result_queue.put( randint( self._int_end ) )
         
         for i in range( self._num_workers ):
-            print("Sending term %s" % ( i ) )
+#            print("Sending term %s" % ( i ) )
             self._result_queue.put( None )
 
         return
@@ -84,7 +84,7 @@ class Mapper( multiprocessing.Process ):
         while self._run:
             data = self._task_queue.get()
             if data is None:
-                print("### DONE ####")
+#                print("### DONE ####")
                 self._run = False
                 self._result_queue.put( None )
 
@@ -119,7 +119,7 @@ class Reducer( multiprocessing.Process ):
         while self._run:
             data = self._task_queue.get()
             if data is None:
-                print("### DONE ####")
+#                print("### DONE ####")
                 self._run = False
 
 #            print("%s > %s" % ( proc_name, data ) )
@@ -175,16 +175,22 @@ def mapreducer():
     red_results.join()
     
     terms = 0
-    tot_sums = 0
+    tot = dict( {'even': 0, 'odd':0, 'sum':0} )
+
     while terms < len( reducers ):
         res = red_results.get()
         if res is None:
             terms += 1
         else:
             pprint(res)
-            tot_sums += res['sum']
+            tot['sum'] += res['sum']
+            tot['even'] += res['even']
+            tot['odd'] += res['odd']
+
         red_results.task_done()
-    pprint( tot_sums )
+    print("# ---------------------------------------")
+    pprint( tot )
+    print("# ---------------------------------------")
     
 
 ## ----------------------------------------------------------
