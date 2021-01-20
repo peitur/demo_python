@@ -46,8 +46,9 @@ from pprint import pprint
 
 class Generator( multiprocessing.Process ):
     
-    def __init__( self, samples, s, e, result_queue ):
+    def __init__( self, samples, s, e, result_queue, **opts ):
         multiprocessing.Process.__init__(self)
+        self._debug = opts.get("debug", False)
         self._samples = samples
         self._int_start = s
         self._int_end = e
@@ -65,8 +66,9 @@ class Generator( multiprocessing.Process ):
 
 class Mapper( multiprocessing.Process ):
 
-    def __init__( self, task_queue, result_queue ):
+    def __init__( self, task_queue, result_queue, **opts ):
         multiprocessing.Process.__init__(self)
+        self._debug = opts.get("debug", False)
         self._task_queue = task_queue
         self._result_queue = result_queue
         self._run = True
@@ -75,13 +77,20 @@ class Mapper( multiprocessing.Process ):
         proc_name = self.name
 
         while self._run:
-            pass
+            data = self._task_queue.get()
+            if not data:
+                self._run = False
 
+            print( "%s: %s" % ( proc_name, data ) )
+            
+            self._task_queue.task_done()            
+        return
 
 class Reducer( multiprocessing.Process ):
 
-    def __init__( self, task_queue, result_queue ):
+    def __init__( self, task_queue, result_queue, **opts ):
         multiprocessing.Process.__init__(self)
+        self._debug = opts.get("debug", False)
         self._task_queue = task_queue
         self._result_queue = result_queue
         self._run = True
@@ -94,11 +103,10 @@ class Reducer( multiprocessing.Process ):
 
 class Manager( multiprocessing.Process ):
 
-    def __init__( self, map_in_queue, red_in_queue, map_esult_queue, red_result_queue ):
+    def __init__( self, **opts ):
         multiprocessing.Process.__init__(self)
-        self._map_in_queue = map_in_queue
-        self._reduce_in_queue = red_in_queue
-        self._result_queue = result_queue
+        self._debug = opts.get("debug", False)
+        self._options = opts
         self._run = True
 
     def run( self ):
@@ -124,11 +132,14 @@ def mapreducer():
 
     print("[ ] Generating  %d samples in interval %s - %s ..." % ( t_size, t_interval[0], t_interval[1] ) )
     generator = Generator( t_size, t_interval[0], t_interval[1], map_tasks )
-    manager = Manager( )
     generator.start()
 
+    mappers = [ Mapper( map_tasks, map_results ) for i in range( 1 ) ]
 
+    for m in mappers:
+        m.start()
 
+    map_tasks.join()
 
 
 ## ----------------------------------------------------------
@@ -182,8 +193,8 @@ class Task( object ):
 ## ----------------------------------------------------------
 ## Utils
 ## ----------------------------------------------------------
-def randint( rng = 10 ):
-    return random.randrange( rng )
+def randint( rng = 10, start=0 ):
+    return random.randrange( start, rng )
 
 ## ----------------------------------------------------------
 ## Simple function based
