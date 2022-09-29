@@ -40,6 +40,67 @@ from pprint import pprint
 
 
 
+
+## ----------------------------------------------------------
+## Simple MapReduce
+## ----------------------------------------------------------
+
+class Task( object ):
+
+    def __init__(self, val ):
+        self._val = val
+
+    def __call__( self ):
+        pass
+
+    def __str__(self):
+        return "%s" % ( self._val )
+
+
+
+class CrashWorker( multiprocessing.Process ):
+    def __init__( self, qin, qout ):
+        multiprocessing.Process.__init__(self)
+        self._task_queue = qin
+        self._result_queue = qout
+        self._run = True
+
+
+    def run( self ):
+        proc_name = self.name
+
+        while self._run:
+            next_task = self._task_queue.get()
+            if next_task is None:
+                # Poison pill means shutdown
+                self._task_queue.task_done()
+                break
+
+            print('%s: %s' % (proc_name, next_task) )
+
+            answer = next_task()
+
+            self._task_queue.task_done()
+            self._result_queue.put(answer)
+
+        return
+
+    
+
+def crashcart( ):
+    qin = multiprocessing.JoinableQueue()
+    qout = multiprocessing.JoinableQueue()
+
+    workers = [ CrashWorker( qin, qout ) for w in range( 10 ) ]
+    try:
+        for w in workers:
+            w.start()
+
+    except Exception as e:
+        print("Worker crash?")
+        pprint(e)
+
+
 ## ----------------------------------------------------------
 ## Simple MapReduce
 ## ----------------------------------------------------------
@@ -142,10 +203,10 @@ class Reducer( multiprocessing.Process ):
 
 
 def mapreducer():
-    t_size = 100000
+    t_size = 10000000
     t_interval = (0, 256)
-    n_map_procs = 15 # andint( 5,1 )
-    n_red_procs = 15 # randint( 5,1 )
+    n_map_procs = 5 # andint( 5,1 )
+    n_red_procs = 5 # randint( 5,1 )
 
     multiprocessing.set_start_method('fork')
 
